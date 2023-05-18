@@ -23,12 +23,19 @@ const pool = mariadb.createPool({
 let conn;
 let isConnected = false;
 
+// run()
 async function run() {
   try {
-    await createTable('playerDB', process.env.CREATE_TABLE_TXT);
-    await uploadPersonsFromCsv();
-    await uploadCoachesFromCsv();
-    await uploadAnalysisReportFromCsv();
+    const person_name = '高隆睿'; // 示例值，根据实际情况传入
+    const form_name = 'analysis report'; // 示例值，根据实际情况传入
+    const start_date = '2023-02-27'; // 示例值，根据实际情况传入
+    const end_date = '2023-03-03'; // 示例值，根据实际情况传入
+
+    // await createTable('playerDB', process.env.CREATE_TABLE_TXT);
+    // await uploadPersonsFromCsv();
+    // await uploadCoachesFromCsv();
+    // await uploadAnalysisReportFromCsv();
+    const result = await get_analysis_report(person_name, form_name, start_date, end_date);
   } catch (err) {
     console.log(err);
   } finally{
@@ -270,23 +277,9 @@ async function createTable(database_name, file_path) {
   }
 }
 
-async function get_analysis_report(name, coach_name, form_name, start_date, end_date) {
-  try {
-    const conn = await connectDatabase(); // Get a connection from the pool
-
-    const createTableData = await fs.readFile(file_path, 'utf-8');
-    // console.log(createTableData.toString());
-    await conn.query(`USE ${database_name}`);
-    await conn.query(createTableData.toString());
-
-    conn.release();
-  } catch (err) {
-    console.error(err);
-  }
-}
-
 async function get_analysis_report(person_name, form_name, start_date, end_date) {
   try {
+    console.log(isConnected);
     let conn = await connectDatabase();
     await conn.query("use playerDB");
 
@@ -298,13 +291,31 @@ async function get_analysis_report(person_name, form_name, start_date, end_date)
       FROM analysis_report
       WHERE person_id = ? AND form_list_id = ? AND date >= ? AND date <= ?
     `;
-    const results = await conn.query(query, [person_id, form_list_id, start_date, end_date]);
+    const metrics_key = [ 'present_moment_attention',  'awareness',  'acceptance',  'motivation',  'teachability',
+     'concentration',  'self_confidence',  'stress_resistance',  'physical_ability',  'technique',  'strategies',  'stress']
 
+    const results = await conn.query(query, [person_id, form_list_id, start_date, end_date]);
+    rerurn_results = [];
+    await Promise.all(results.map(async (result) => {
+      let rerurn_result = {
+        'metrics': [],
+        'person_name': person_name,
+        'form_name': form_name
+      }
+      for (const [key, value] of Object.entries(result)) {
+        if (metrics_key.includes(key)) {
+          rerurn_result['metrics'].push(value);
+        } else {
+          rerurn_result[key] = value;
+        }
+      }
+      rerurn_results.push(rerurn_result);
+    }));
     conn.release();
-    return results;
+    // console.log(rerurn_results)
+    return rerurn_results;
   } catch (err) {
     console.log(err);
     return null;
   }
 }
-
