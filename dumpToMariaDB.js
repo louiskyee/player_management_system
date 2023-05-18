@@ -7,6 +7,9 @@ const fs = require('fs/promises');
 // console.log(process.env.DB_USER)
 // console.log(process.env.DB_PASSWORD)
 // console.log(process.env.DB_NAME)
+module.exports = {
+  get_analysis_report
+};
 
 const pool = mariadb.createPool({
      host: process.env.DB_HOST,
@@ -19,8 +22,6 @@ const pool = mariadb.createPool({
 
 let conn;
 let isConnected = false;
-
-run()
 
 async function run() {
   try {
@@ -268,3 +269,42 @@ async function createTable(database_name, file_path) {
     console.error(err);
   }
 }
+
+async function get_analysis_report(name, coach_name, form_name, start_date, end_date) {
+  try {
+    const conn = await connectDatabase(); // Get a connection from the pool
+
+    const createTableData = await fs.readFile(file_path, 'utf-8');
+    // console.log(createTableData.toString());
+    await conn.query(`USE ${database_name}`);
+    await conn.query(createTableData.toString());
+
+    conn.release();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function get_analysis_report(person_name, form_name, start_date, end_date) {
+  try {
+    let conn = await connectDatabase();
+    await conn.query("use playerDB");
+
+    let person_id = (await conn.query("SELECT id FROM persons WHERE name=?", [person_name]))[0]['id'];
+    let form_list_id = (await conn.query("SELECT id FROM form_list WHERE name=?", [form_name]))[0]['id'];
+
+    const query = `
+      SELECT *
+      FROM analysis_report
+      WHERE person_id = ? AND form_list_id = ? AND date >= ? AND date <= ?
+    `;
+    const results = await conn.query(query, [person_id, form_list_id, start_date, end_date]);
+
+    conn.release();
+    return results;
+  } catch (err) {
+    console.log(err);
+    return null;
+  }
+}
+
