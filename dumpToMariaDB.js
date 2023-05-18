@@ -2,6 +2,7 @@ require('dotenv').config();
 const mariadb = require('mariadb');
 const csv = require('csv-parse');
 const fs = require('fs/promises');
+const dayjs = require('dayjs');
 // console.log(process.env.DB_HOST)
 // console.log(process.env.DB_PORT)
 // console.log(process.env.DB_USER)
@@ -312,6 +313,8 @@ async function get_analysis_report(person_name, form_name, start_date, end_date)
 
     query_results.forEach(query_result => {
       const metrics = [];
+      const formattedDate = dayjs(query_result.date).add(8, 'hour').format("YYYY-MM-DD");
+      delete query_result.date;
       for (const [key, value] of Object.entries(query_result)) {
         if (metrics_key.includes(key)) {
           metrics.push(value);
@@ -319,6 +322,7 @@ async function get_analysis_report(person_name, form_name, start_date, end_date)
           results[key].push(value);
         }
       }
+      results.date.push(formattedDate);
       results.metrics.push(metrics);
     });
 

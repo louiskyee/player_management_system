@@ -1,7 +1,15 @@
 {
-    "analysis_report": [
-        {
-            "metrics": [
+    "analysis_report": {
+        "person_name": "高隆睿",
+        "form_name": "analysis report",
+        "date": [
+            "2023-02-26T16:00:00.000Z",
+            "2023-02-27T16:00:00.000Z",
+            "2023-02-28T16:00:00.000Z",
+            "2023-03-02T16:00:00.000Z"
+        ],
+        "metrics": [
+            [
                 4.33333,
                 3.33333,
                 4,
@@ -15,17 +23,7 @@
                 7,
                 9
             ],
-            "person_name": "高隆睿",
-            "form_name": "analysis report",
-            "date": "2023-02-26T16:00:00.000Z",
-            "practice_court": "桃園球場",
-            "learn": "球場策略",
-            "total_par": 39,
-            "total_part": 18,
-            "self_rating": 70
-        },
-        {
-            "metrics": [
+            [
                 4,
                 3.66667,
                 4,
@@ -39,17 +37,7 @@
                 7,
                 8
             ],
-            "person_name": "高隆睿",
-            "form_name": "analysis report",
-            "date": "2023-02-27T16:00:00.000Z",
-            "practice_court": "桃園球場",
-            "learn": "球場策略",
-            "total_par": 75,
-            "total_part": 32,
-            "self_rating": 71
-        },
-        {
-            "metrics": [
+            [
                 3.33333,
                 2.33333,
                 4,
@@ -63,17 +51,7 @@
                 5,
                 8
             ],
-            "person_name": "高隆睿",
-            "form_name": "analysis report",
-            "date": "2023-02-28T16:00:00.000Z",
-            "practice_court": "國華球場",
-            "learn": "球場策略",
-            "total_par": 84,
-            "total_part": 36,
-            "self_rating": 40
-        },
-        {
-            "metrics": [
+            [
                 3.33333,
                 3,
                 4,
@@ -86,15 +64,37 @@
                 1,
                 7,
                 8
-            ],
-            "person_name": "高隆睿",
-            "form_name": "analysis report",
-            "date": "2023-03-02T16:00:00.000Z",
-            "practice_court": "大溪球場",
-            "learn": "球場策略",
-            "total_par": 81,
-            "total_part": 35,
-            "self_rating": 30
-        }
-    ]
+            ]
+        ],
+        "practice_court": [
+            "桃園球場",
+            "桃園球場",
+            "國華球場",
+            "大溪球場"
+        ],
+        "learn": [
+            "球場策略",
+            "球場策略",
+            "球場策略",
+            "球場策略"
+        ],
+        "total_par": [
+            39,
+            75,
+            84,
+            81
+        ],
+        "total_part": [
+            18,
+            32,
+            36,
+            35
+        ],
+        "self_rating": [
+            70,
+            71,
+            40,
+            30
+        ]
+    }
 }
