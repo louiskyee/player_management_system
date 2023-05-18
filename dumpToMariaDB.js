@@ -8,7 +8,8 @@ const fs = require('fs/promises');
 // console.log(process.env.DB_PASSWORD)
 // console.log(process.env.DB_NAME)
 module.exports = {
-  get_analysis_report
+  get_analysis_report,
+  uploadAnalysisReportFromCsv
 };
 
 const pool = mariadb.createPool({
@@ -23,7 +24,6 @@ const pool = mariadb.createPool({
 let conn;
 let isConnected = false;
 
-// run()
 async function run() {
   try {
     const person_name = '高隆睿'; // 示例值，根据实际情况传入
@@ -34,8 +34,8 @@ async function run() {
     // await createTable('playerDB', process.env.CREATE_TABLE_TXT);
     // await uploadPersonsFromCsv();
     // await uploadCoachesFromCsv();
-    // await uploadAnalysisReportFromCsv();
-    const result = await get_analysis_report(person_name, form_name, start_date, end_date);
+    await uploadAnalysisReportFromCsv();
+    // const result = await get_analysis_report(person_name, form_name, start_date, end_date);
   } catch (err) {
     console.log(err);
   } finally{
@@ -279,41 +279,52 @@ async function createTable(database_name, file_path) {
 
 async function get_analysis_report(person_name, form_name, start_date, end_date) {
   try {
-    console.log(isConnected);
-    let conn = await connectDatabase();
+    const conn = await connectDatabase();
     await conn.query("use playerDB");
 
-    let person_id = (await conn.query("SELECT id FROM persons WHERE name=?", [person_name]))[0]['id'];
-    let form_list_id = (await conn.query("SELECT id FROM form_list WHERE name=?", [form_name]))[0]['id'];
+    const [person_result] = await conn.query("SELECT id FROM persons WHERE name=?", [person_name]);
+    const person_id = person_result.id;
+
+    const [form_result] = await conn.query("SELECT id FROM form_list WHERE name=?", [form_name]);
+    const form_list_id = form_result.id;
 
     const query = `
-      SELECT *
+      SELECT date, practice_court, present_moment_attention, awareness, acceptance, motivation, teachability, learn, total_par, total_part, self_rating, concentration, self_confidence, stress_resistance, physical_ability, technique, strategies, stress
       FROM analysis_report
-      WHERE person_id = ? AND form_list_id = ? AND date >= ? AND date <= ?
+      WHERE person_id = ? AND form_list_id = ? AND date BETWEEN ? AND ?
     `;
-    const metrics_key = [ 'present_moment_attention',  'awareness',  'acceptance',  'motivation',  'teachability',
-     'concentration',  'self_confidence',  'stress_resistance',  'physical_ability',  'technique',  'strategies',  'stress']
 
-    const results = await conn.query(query, [person_id, form_list_id, start_date, end_date]);
-    rerurn_results = [];
-    await Promise.all(results.map(async (result) => {
-      let rerurn_result = {
-        'metrics': [],
-        'person_name': person_name,
-        'form_name': form_name
-      }
-      for (const [key, value] of Object.entries(result)) {
+    const metrics_key = ['present_moment_attention', 'awareness', 'acceptance', 'motivation', 'teachability', 'concentration', 'self_confidence', 'stress_resistance', 'physical_ability', 'technique', 'strategies', 'stress'];
+
+    const query_results = await conn.query(query, [person_id, form_list_id, start_date, end_date]);
+
+    const results = {
+      person_name,
+      form_name,
+      date: [],
+      metrics: [],
+      practice_court: [],
+      learn: [],
+      total_par: [],
+      total_part: [],
+      self_rating: []
+    };
+
+    query_results.forEach(query_result => {
+      const metrics = [];
+      for (const [key, value] of Object.entries(query_result)) {
         if (metrics_key.includes(key)) {
-          rerurn_result['metrics'].push(value);
+          metrics.push(value);
         } else {
-          rerurn_result[key] = value;
+          results[key].push(value);
         }
       }
-      rerurn_results.push(rerurn_result);
-    }));
+      results.metrics.push(metrics);
+    });
+
     conn.release();
-    // console.log(rerurn_results)
-    return rerurn_results;
+    // console.log(results);
+    return results;
   } catch (err) {
     console.log(err);
     return null;

@@ -26,6 +26,16 @@ app.get('/analysis_report', async (req, res) => {
     }
 });
 
+app.get('/uploadAnalysisReportFromCsv', async (req, res) => {
+    try {
+        const report = await db.uploadAnalysisReportFromCsv();
+        res.json({ message: "uploadAnalysisReportFromCsv" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 app.listen(8000, () => {
     console.log(`Server is running on port 8000.`);
 });
