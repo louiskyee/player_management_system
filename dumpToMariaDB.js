@@ -25,6 +25,7 @@ const pool = mariadb.createPool({
 let conn;
 let isConnected = false;
 
+// run()
 async function run() {
   try {
     const person_name = '高隆睿'; // 示例值，根据实际情况传入
@@ -313,7 +314,7 @@ async function get_analysis_report(person_name, form_name, start_date, end_date)
 
     query_results.forEach(query_result => {
       const metrics = [];
-      const formattedDate = dayjs(query_result.date).add(8, 'hour').format("YYYY-MM-DD");
+      const formattedDate = dayjs(query_result.date).add(8, 'hour').format("YYYY/MM/DD");
       delete query_result.date;
       for (const [key, value] of Object.entries(query_result)) {
         if (metrics_key.includes(key)) {
