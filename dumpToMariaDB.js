@@ -9,7 +9,9 @@ const dayjs = require('dayjs');
 // console.log(process.env.DB_PASSWORD)
 // console.log(process.env.DB_NAME)
 module.exports = {
+  get_training_camp,
   get_analysis_report,
+  get_training_camp_analysis_report,
   uploadAnalysisReportFromCsv
 };
 
@@ -126,6 +128,21 @@ async function uploadPersonsFromCsv() {
     console.log(err);
   }
 }
+async function setForeignKey() {
+  let conn;
+  try {
+    conn = await connectDatabase(); // Get a connection from the pool
+    await conn.query("use playerDB");
+    await conn.query("ALTER TABLE persons ADD CONSTRAINT coach_id FOREIGN KEY (coach_id) REFERENCES coaches(id);");
+    await conn.query("ALTER TABLE analysis_report ADD CONSTRAINT form_list_id FOREIGN KEY (form_list_id) REFERENCES form_list(id);");
+    await conn.query("ALTER TABLE analysis_report ADD CONSTRAINT person_id FOREIGN KEY (person_id) REFERENCES persons(id);");
+    await conn.query("ALTER TABLE analysis_report ADD CONSTRAINT training_camp_id FOREIGN KEY (training_camp_id) REFERENCES training_camp_list(id);");
+    
+    conn.release();
+  } catch (err) {
+    console.log(err);
+  }
+}
 
 async function uploadAnalysisReportFromCsv() {
   try {
@@ -142,6 +159,7 @@ async function uploadAnalysisReportFromCsv() {
 
     const key_table = {
       '姓名': 'person_id',
+      '集訓名稱': 'training_camp_id',
       '1. 當發現自己心不在焉時，我將注意力重新集中在當下的訓練上。': 'present_moment_attention',
       '2. 當訓練中一些肌肉有疼痛感時，我還是能夠將注意力維持在自己該做的事情上。': 'present_moment_attention',
       '3. 注意力分散的情況一閃而過，我會很快回到當下的訓練或比賽中。': 'present_moment_attention',
@@ -177,7 +195,7 @@ async function uploadAnalysisReportFromCsv() {
       '你覺得今天練習(或比賽)的技術發揮如何？': 'technique',
       '你覺得今天練習(或比賽)的策略執行如何？': 'strategies',
       '你覺得今天練習(或比賽)的壓力程度如何？': 'stress',
-      '你對自己在今天練習(或比賽)的整體表現評分 (0-100分)': 'self_rating'
+      '你對自己在今天練習(或比賽)的整體表現評分 (0-100分)': 'self_rating'      
     };
 
     const division_key = ['present_moment_attention', 'awareness', 'acceptance', 'motivation',
@@ -187,7 +205,8 @@ async function uploadAnalysisReportFromCsv() {
     await Promise.all(data.map(async (report) => {
       let upload_data = {
         'person_id': '',
-        'form_list_id': 'analysis report',
+        'form_list_id': '',
+        'training_camp_id': '',
         'date': '',
         'practice_court': '',
         'negative_thought': '',
@@ -226,8 +245,13 @@ async function uploadAnalysisReportFromCsv() {
         upload_data[key] /= 3;
       });
 
-      upload_data['form_list_id'] = (await conn.query("SELECT id FROM form_list WHERE name=?", [upload_data['form_list_id']]))[0]['id'];
-      upload_data['person_id'] = (await conn.query("SELECT id FROM persons WHERE name=?", [upload_data['person_id']]))[0]['id'];
+      const person_name = upload_data['person_id'];
+      const form_name = "analysis report";
+      const training_camp_name = upload_data['training_camp_id'];
+
+      upload_data['form_list_id'] = (await conn.query("SELECT id FROM form_list WHERE name=?", [form_name]))[0]['id'];
+      upload_data['person_id'] = (await conn.query("SELECT id FROM persons WHERE name=?", [person_name]))[0]['id'];
+      upload_data['training_camp_id'] = (await conn.query("SELECT id FROM training_camp_list WHERE camp_name=?", [training_camp_name]))[0]['id'];
 
       const existingData = await conn.query(
         "SELECT * FROM analysis_report WHERE form_list_id = ? AND person_id = ? AND date = ?",
@@ -279,26 +303,60 @@ async function createTable(database_name, file_path) {
   }
 }
 
+async function get_training_camp() {
+  try {
+    const conn = await connectDatabase();
+    await conn.query("USE playerDB");
+
+    const query = `
+      SELECT camp_name, training_start_date, training_end_date
+      FROM training_camp_list;    
+    `;
+    const query_results = await conn.query(query);
+
+    const results = {
+      camp_name: [],
+      training_start_date: [], 
+      training_end_date: []
+    };
+
+    for (const query_result of query_results) {
+      const { camp_name, training_start_date, training_end_date } = query_result;
+      const formattedStartDate = dayjs(training_start_date).add(8, 'hour').format("YYYY/MM/DD");
+      const formattedEndDate = dayjs(training_end_date).add(8, 'hour').format("YYYY/MM/DD");
+
+      results.camp_name.push([camp_name]);
+      results.training_start_date.push([formattedStartDate]);
+      results.training_end_date.push([formattedEndDate]);
+    }
+
+    conn.release();
+    // console.log(results);
+    return results;
+  } catch (err) {
+    console.log(err);
+    return null;
+  }
+}
+
+
 async function get_analysis_report(person_name, form_name, start_date, end_date) {
   try {
     const conn = await connectDatabase();
-    await conn.query("use playerDB");
-
-    const [person_result] = await conn.query("SELECT id FROM persons WHERE name=?", [person_name]);
-    const person_id = person_result.id;
-
-    const [form_result] = await conn.query("SELECT id FROM form_list WHERE name=?", [form_name]);
-    const form_list_id = form_result.id;
+    await conn.query("USE playerDB");
 
     const query = `
-      SELECT date, practice_court, present_moment_attention, awareness, acceptance, motivation, teachability, learn, total_par, total_part, self_rating, concentration, self_confidence, stress_resistance, physical_ability, technique, strategies, stress
-      FROM analysis_report
-      WHERE person_id = ? AND form_list_id = ? AND date BETWEEN ? AND ?
+      SELECT a.date, a.practice_court, a.present_moment_attention, a.awareness, a.acceptance, a.motivation, a.teachability, a.learn, a.total_par, a.total_part, a.self_rating, a.concentration, a.self_confidence, a.stress_resistance, a.physical_ability, a.technique, a.strategies, a.stress
+      FROM analysis_report AS a
+      JOIN persons AS p ON a.person_id = p.id
+      JOIN form_list AS f ON a.form_list_id = f.id
+      WHERE p.name = ? AND f.name = ? AND a.date BETWEEN ? AND ?
     `;
 
     const metrics_key = ['present_moment_attention', 'awareness', 'acceptance', 'motivation', 'teachability', 'concentration', 'self_confidence', 'stress_resistance', 'physical_ability', 'technique', 'strategies', 'stress'];
-
-    const query_results = await conn.query(query, [person_id, form_list_id, start_date, end_date]);
+    const result_key = ['practice_court', 'learn', 'total_par', 'total_part', 'self_rating'];
+    
+    const query_results = await conn.query(query, [person_name, form_name, start_date, end_date]);
 
     const results = {
       person_name,
@@ -315,17 +373,79 @@ async function get_analysis_report(person_name, form_name, start_date, end_date)
     query_results.forEach(query_result => {
       const metrics = [];
       const formattedDate = dayjs(query_result.date).add(8, 'hour').format("YYYY/MM/DD");
-      delete query_result.date;
-      for (const [key, value] of Object.entries(query_result)) {
-        if (metrics_key.includes(key)) {
-          metrics.push(value);
-        } else {
-          results[key].push(value);
-        }
-      }
       results.date.push(formattedDate);
+
+      for (const key of metrics_key) {
+        metrics.push(query_result[key]);
+      }
       results.metrics.push(metrics);
+
+      for (const key of result_key) {
+        results[key].push(query_result[key]);
+      }
     });
+
+    conn.release();
+    // console.log(results);
+    return results;
+  } catch (err) {
+    console.log(err);
+    return null;
+  }
+}
+
+async function get_training_camp_analysis_report(person_name, form_name, start_dates, end_dates) {
+  try {
+    const conn = await connectDatabase();
+    await conn.query("USE playerDB");
+
+    const query = `
+      SELECT a.date, a.practice_court, a.present_moment_attention, a.awareness, a.acceptance, a.motivation, a.teachability, a.learn, a.total_par, a.total_part, a.self_rating, a.concentration, a.self_confidence, a.stress_resistance, a.physical_ability, a.technique, a.strategies, a.stress
+      FROM analysis_report AS a
+      JOIN persons AS p ON a.person_id = p.id
+      JOIN form_list AS f ON a.form_list_id = f.id
+      WHERE p.name = ? AND f.name = ? AND a.date BETWEEN ? AND ?
+    `;
+
+    const metrics_key = ['present_moment_attention', 'awareness', 'acceptance', 'motivation', 'teachability', 'concentration', 'self_confidence', 'stress_resistance', 'physical_ability', 'technique', 'strategies', 'stress'];
+    const group_key = ['date', 'metrics', 'practice_court', 'learn', 'total_par', 'total_part', 'self_rating'];
+
+    const results = {
+      person_name,
+      form_name,
+      date: [],
+      metrics: [],
+      practice_court: [],
+      learn: [],
+      total_par: [],
+      total_part: [],
+      self_rating: []
+    };
+
+    for (let i = 0; i < start_dates.length; i++) {
+      let query_results = await conn.query(query, [person_name, form_name, start_dates[i], end_dates[i]]);      
+      
+      for (let j = 0; j < group_key.length; ++j){
+        results[group_key[j]][i] = [];
+      }
+
+      query_results.forEach(query_result => {
+        const metrics = [];
+        const formattedDate = dayjs(query_result.date).add(8, 'hour').format("YYYY/MM/DD");
+        results.date[i].push(formattedDate);
+
+        for (const key of metrics_key) {
+          metrics.push(query_result[key]);
+        }
+        results.metrics[i].push(metrics);
+
+        for (const key of group_key) {
+          if (key !== 'date' && key !== 'metrics') {
+            results[key][i].push(query_result[key]);
+          }
+        }
+      });
+    }
 
     conn.release();
     // console.log(results);

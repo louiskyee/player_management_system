@@ -14,5 +14,20 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
-  }
+  },
+  "name": "player_management_system",
+  "version": "1.0.0",
+  "main": "dumpToMariaDB.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/louiskyee/player_management_system.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/louiskyee/player_management_system/issues"
+  },
+  "homepage": "https://github.com/louiskyee/player_management_system#readme",
+  "description": ""
 }
