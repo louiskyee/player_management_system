@@ -12,7 +12,7 @@
     "nodemon": "^2.0.22"
   },
   "scripts": {
-    "start": "node retrieveFromMariaDB.js",
+    "start": "node server.js",
     "dev": "nodemon server.js"
   },
   "name": "player_management_system",
